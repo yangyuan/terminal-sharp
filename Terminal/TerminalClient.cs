@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Numerics;
 using System.Text;
 
 namespace Terminal
@@ -39,6 +40,8 @@ namespace Terminal
             byte[] padding = br.ReadBytes(padding_length);
             return payload;
         }
+
+
     }
 
     public class NetworkByteWriter
@@ -87,16 +90,17 @@ namespace Terminal
             String result = String.Join(",", data);
             WriteString(result);
         }
-        public void WriteMPInt(Byte[] data)
+        public void WriteMPInt(BigInteger data)
         {
-            WriteUInt32((UInt32)data.Length);
-            bw.Write(data);
+            byte[] result = data.ToByteArray();
+            Array.Reverse(result);
+            WriteUInt32((UInt32)result.Length);
+            bw.Write(result);
         }
         public void Flush()
         {
             bw.Flush();
         }
-
     }
 
     public class NetworkByteReader
@@ -136,10 +140,12 @@ namespace Terminal
             return BitConverter.ToUInt64(result, 0);
         }
 
-        public Byte[] ReadMPInt()
+        public BigInteger ReadMPInt()
         {
             uint size = ReadUInt32();
-            return br.ReadBytes((int)size);
+            byte[] data = br.ReadBytes((int)size);
+            Array.Reverse(data);
+            return new BigInteger(data);
         }
 
         public String ReadString()
@@ -147,6 +153,11 @@ namespace Terminal
             uint size = ReadUInt32();
             byte[] result = br.ReadBytes((int)size);
             return Encoding.UTF8.GetString(result);
+        }
+        public Byte[] ReadBlob()
+        {
+            uint size = ReadUInt32();
+            return br.ReadBytes((int)size);
         }
         public String[] ReadNameList()
         {
