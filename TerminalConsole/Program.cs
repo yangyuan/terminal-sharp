@@ -82,7 +82,42 @@ namespace TerminalConsole
 
                 string id2 = nbr4.ReadString();
                 byte[] rsa_signature_blob = nbr4.ReadBlob();
-             
+
+
+                System.Security.Cryptography.SHA1CryptoServiceProvider sha1 = new System.Security.Cryptography.SHA1CryptoServiceProvider();
+                System.Security.Cryptography.RSAParameters RSAKeyInfo = new System.Security.Cryptography.RSAParameters();
+
+                byte[] b_n = rsa_n.ToByteArray();
+                byte[] b_e = rsa_e.ToByteArray();
+                byte[] b_n2 = new byte[256];
+                Array.Copy(b_n, b_n2, 256);
+                Array.Reverse(b_n2);
+                Array.Reverse(b_e);
+
+                System.Security.Cryptography.CryptoStream cs = new System.Security.Cryptography.CryptoStream(System.IO.Stream.Null, sha1, System.Security.Cryptography.CryptoStreamMode.Write);
+                /*
+                buf.reset();
+                    buf.putString(V_C); buf.putString(V_S);
+                    buf.putString(I_C); buf.putString(I_S);
+                    buf.putString(K_S);
+                    buf.putMPInt(e); buf.putMPInt(f);
+                    buf.putMPInt(K);
+                    byte[] foo=new byte[buf.getLength()];
+                    buf.getByte(foo);
+                    sha.update(foo, 0, foo.Length);
+                    H=sha.digest();
+                 * cs.Write(  foo , 0, foo.Length);
+                 * 
+                 * sig.update(H);
+                 * */
+
+                RSAKeyInfo.Modulus = b_n2;
+                RSAKeyInfo.Exponent = b_e;
+                System.Security.Cryptography.RSACryptoServiceProvider RSA = new System.Security.Cryptography.RSACryptoServiceProvider();
+                RSA.ImportParameters(RSAKeyInfo);
+                System.Security.Cryptography.RSAPKCS1SignatureDeformatter RSADeformatter = new System.Security.Cryptography.RSAPKCS1SignatureDeformatter(RSA);
+                RSADeformatter.SetHashAlgorithm("SHA1");
+                bool verify = RSADeformatter.VerifySignature(sha1, rsa_signature_blob);
             }
 
             int pos = 0;
