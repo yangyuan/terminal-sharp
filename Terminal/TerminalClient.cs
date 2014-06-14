@@ -5,11 +5,43 @@ using System.Text;
 
 namespace Terminal
 {
-    class TerminalClient
+    public class TerminalClient
     {
+        public static string version = "SSH-2.0-TerminalSharp";
+        public static byte[] CreatePackage(byte[] playload)
+        {
+            uint size = (uint)playload.Length;
+            size += 5;
+            size = (size + 16) / 8 * 8;
+
+            uint packet_length = size - 4;
+            byte padding_length = (byte)(size - 5 - playload.Length);
+
+            byte[] result = new byte[size];
+            byte[] padding = new byte[padding_length];
+
+            MemoryStream ms = new MemoryStream(result);
+            NetworkByteWriter nbw = new NetworkByteWriter(ms);
+
+            nbw.WriteUInt32(packet_length);
+            nbw.WriteByte(padding_length);
+            nbw.WriteBytes(playload);
+            nbw.WriteBytes(padding);
+            nbw.Flush();
+            return result;
+        }
+
+        public static byte[] ParsePackage(NetworkByteReader br)
+        {
+            uint packet_length = br.ReadUInt32();
+            byte padding_length = br.ReadByte();
+            byte[] payload = br.ReadBytes(packet_length - padding_length - 1);
+            byte[] padding = br.ReadBytes(padding_length);
+            return payload;
+        }
     }
 
-    class NetworkByteWriter
+    public class NetworkByteWriter
     {
         BinaryWriter bw;
         public NetworkByteWriter(Stream input)
@@ -67,7 +99,7 @@ namespace Terminal
 
     }
 
-    class NetworkByteReader
+    public class NetworkByteReader
     {
         BinaryReader br;
         public NetworkByteReader(Stream input)
