@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Terminal
@@ -13,7 +14,7 @@ namespace Terminal
         {
             uint size = (uint)playload.Length;
             size += 5;
-            size = (size + 16) / 8 * 8;
+            size = (size + 16) / 16 * 16;
 
             uint packet_length = size - 4;
             byte padding_length = (byte)(size - 5 - playload.Length);
@@ -41,7 +42,91 @@ namespace Terminal
             return payload;
         }
 
+        public static byte[] MakePadding(byte[] data, int size)
+        {
+            int extra = data.Length % size;
+            if (extra == 0)
+            {
+                return (byte[])data.Clone();
+            }
 
+            extra = size - extra;
+            byte[] cache = new byte[data.Length + extra];
+            Array.Copy(data, cache, data.Length);
+            int padding = cache[4];
+            padding += extra;
+            cache[4] = (byte)padding;
+            return cache;
+        }
+
+        public static byte[] ComputeMAC(byte[] key, uint seqo, byte[] data, HashAlgorithm hash)
+        {
+            MemoryStream ms_cache = new MemoryStream();
+            NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
+            nbw_cache.WriteUInt32(seqo);
+            nbw_cache.WriteBytes(data);
+            nbw_cache.Flush();
+            byte[] xxx = ms_cache.ToArray();
+
+            byte[] key_buffer = new byte[64];
+            Array.Clear(key_buffer, 0, key_buffer.Length);
+            Array.Copy(key, 0, key_buffer, 0, key.Length);
+
+            byte[] padding1 = new byte[64];
+            for (int i = 0; i < 64; i++)
+                padding1[i] = (byte)(key_buffer[i] ^ 0x36);
+            byte[] padding2 = new byte[64];
+            for (int i = 0; i < 64; i++)
+                padding2[i] = (byte)(key_buffer[i] ^ 0x5C);
+
+            hash.Initialize();
+            hash.TransformBlock(padding1, 0, padding1.Length, padding1, 0);
+            hash.TransformFinalBlock(xxx, 0, xxx.Length);
+            xxx = (byte[])hash.Hash.Clone();
+            hash.Initialize();
+            hash.TransformBlock(padding2, 0, padding2.Length, padding2, 0);
+            hash.TransformFinalBlock(xxx, 0, xxx.Length);
+
+            return hash.Hash;
+        }
+
+        public static byte[] ComputeMAC2(byte[] key, uint seqo, byte[] data, HashAlgorithm hash)
+        {
+            Org.Mentalis.Security.Cryptography.HMAC mentalis_mac = new Org.Mentalis.Security.Cryptography.HMAC(new SHA1CryptoServiceProvider(), key);
+            CryptoStream cs = new CryptoStream(Stream.Null, mentalis_mac, CryptoStreamMode.Write);
+
+            MemoryStream ms_cache = new MemoryStream();
+            NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
+            nbw_cache.WriteUInt32(seqo);
+            nbw_cache.WriteBytes(data);
+            nbw_cache.Flush();
+            byte[] xxx = ms_cache.ToArray();
+            cs.Write(xxx, 0, xxx.Length);
+            cs.Close();
+
+            byte[] key_buffer = new byte[64];
+            Array.Clear(key_buffer, 0, key_buffer.Length);
+            Array.Copy(key, 0, key_buffer, 0, key.Length);
+
+            byte[] padding1 = new byte[64];
+            for (int i = 0; i < 64; i++)
+                padding1[i] = (byte)(key_buffer[i] ^ 0x36);
+            byte[] padding2 = new byte[64];
+            for (int i = 0; i < 64; i++)
+                padding2[i] = (byte)(key_buffer[i] ^ 0x5C);
+
+            hash.Initialize();
+            hash.TransformBlock(padding1, 0, padding1.Length, padding1, 0);
+            hash.TransformFinalBlock(xxx, 0, xxx.Length);
+            xxx = (byte[])hash.Hash.Clone();
+            hash.Initialize();
+            hash.TransformBlock(padding2, 0, padding2.Length, padding2, 0);
+            hash.TransformFinalBlock(xxx, 0, xxx.Length);
+
+            byte[] xx = hash.Hash;
+
+            return mentalis_mac.Hash;
+        }
     }
 
 

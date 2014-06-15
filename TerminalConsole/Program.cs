@@ -12,12 +12,28 @@ namespace TerminalConsole
 {
     class Program
     {
+        static void Debug()
+        {
+            /*
+            HashAlgorithm hash = MD5.Create();
+            MemoryStream ms_cache = new MemoryStream();
+            NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
+            byte[] x = new byte[] {
+                0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b
+            };
+            nbw_cache.WriteBytes(x);
+            nbw_cache.WriteBytes(Encoding.ASCII.GetBytes("Hi There"));
+            nbw_cache.Flush();
+
+             hash.ComputeHash(ms_cache.ToArray());
+             * */
+        }
         static void Main(string[] args)
         {
             // learn and test
-            //DiffieHellmanX.Debug();
+            Debug();
 
-            TcpClient tc = new TcpClient("192.168.192.132", 22);
+            TcpClient tc = new TcpClient("192.168.192.132", 8022);
             NetworkStream ns = tc.GetStream();
             NetworkByteReader nbr = new NetworkByteReader(ns);
             NetworkByteWriter nbw = new NetworkByteWriter(ns);
@@ -46,7 +62,7 @@ namespace TerminalConsole
             ExchangeMethods ems = PackageKEXINIT.Negotiate(pkex_client, pkex);
             BigInteger xxxxxxxxxxxe = DiffieHellmanX.CreateE();
             {
-                
+
                 MemoryStream ms = new MemoryStream();
                 NetworkByteWriter nbw2 = new NetworkByteWriter(ms);
                 nbw2.WriteByte(30); // SSH_MSG_KEXDH_INIT
@@ -62,6 +78,9 @@ namespace TerminalConsole
 
 
             byte[] kex2 = TerminalClient.ParsePackage(nbr);
+
+            BigInteger KEX_K = new BigInteger(0);
+            byte[] HEX_H;
 
             {
                 MemoryStream ms = new MemoryStream(kex2);
@@ -107,7 +126,7 @@ namespace TerminalConsole
                 byte[] I_S = kex;
                 BigInteger HHH_e = xxxxxxxxxxxe;
                 BigInteger HHH_f = f;
-                BigInteger HHH_K = DiffieHellmanX.ComputeK(f);
+                KEX_K = DiffieHellmanX.ComputeK(f);
 
                 nbw5.WriteString(V_C);
                 nbw5.WriteString(V_S);
@@ -116,14 +135,14 @@ namespace TerminalConsole
                 nbw5.WriteBlob(K_S);
                 nbw5.WriteMPInt(HHH_e);
                 nbw5.WriteMPInt(HHH_f);
-                nbw5.WriteMPInt(HHH_K);
+                nbw5.WriteMPInt(KEX_K);
                 nbw5.Flush();
 
 
                 HashAlgorithm hash = SHA1.Create();
                 byte[] xxx = ms5.ToArray();
 
-                byte[] hash_result = hash.ComputeHash(xxx);
+                HEX_H = hash.ComputeHash(xxx);
 
 
                 //CryptoStream cs = new CryptoStream(null, sha1, CryptoStreamMode.Write);
@@ -155,11 +174,156 @@ namespace TerminalConsole
 
                 SHA1CryptoServiceProvider sha1 = new SHA1CryptoServiceProvider();
                 CryptoStream cs = new System.Security.Cryptography.CryptoStream(System.IO.Stream.Null, sha1, CryptoStreamMode.Write);
-                cs.Write(hash_result, 0, hash_result.Length);
+                cs.Write(HEX_H, 0, HEX_H.Length);
                 cs.Close();
 
 
                 bool verify = RSADeformatter.VerifySignature(sha1, rsa_signature_blob);
+            }
+
+
+            // Key Exchange
+            byte[] kex_newkeys = TerminalClient.ParsePackage(nbr);
+
+            byte[] kex_newkeys_p = TerminalClient.CreatePackage(kex_newkeys);
+            nbw.WriteBytes(kex_newkeys_p);
+            nbw.Flush();
+
+            byte[] xxxxxxxxxx;
+            HashAlgorithm hash_key = SHA1.Create();
+            //
+            {
+                MemoryStream ms_cache = new MemoryStream();
+                NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
+                nbw_cache.WriteMPInt(KEX_K);
+                nbw_cache.WriteBytes(HEX_H);
+                nbw_cache.WriteByte((byte)0x41);
+                nbw_cache.WriteBytes(HEX_H);
+                xxxxxxxxxx = ms_cache.ToArray();
+            }
+            byte[] IVc2s = hash_key.ComputeHash(xxxxxxxxxx);
+
+            {
+                MemoryStream ms_cache = new MemoryStream();
+                NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
+                nbw_cache.WriteMPInt(KEX_K);
+                nbw_cache.WriteBytes(HEX_H);
+                nbw_cache.WriteByte((byte)0x42);
+                nbw_cache.WriteBytes(HEX_H);
+                xxxxxxxxxx = ms_cache.ToArray();
+            }
+            byte[] IVs2c = hash_key.ComputeHash(xxxxxxxxxx);
+
+            {
+                MemoryStream ms_cache = new MemoryStream();
+                NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
+                nbw_cache.WriteMPInt(KEX_K);
+                nbw_cache.WriteBytes(HEX_H);
+                nbw_cache.WriteByte((byte)0x43);
+                nbw_cache.WriteBytes(HEX_H);
+                xxxxxxxxxx = ms_cache.ToArray();
+            }
+            byte[] Ec2s = hash_key.ComputeHash(xxxxxxxxxx);
+
+            {
+                MemoryStream ms_cache = new MemoryStream();
+                NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
+                nbw_cache.WriteMPInt(KEX_K);
+                nbw_cache.WriteBytes(HEX_H);
+                nbw_cache.WriteByte((byte)0x44);
+                nbw_cache.WriteBytes(HEX_H);
+                xxxxxxxxxx = ms_cache.ToArray();
+            }
+            byte[] Es2c = hash_key.ComputeHash(xxxxxxxxxx);
+
+            {
+                MemoryStream ms_cache = new MemoryStream();
+                NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
+                nbw_cache.WriteMPInt(KEX_K);
+                nbw_cache.WriteBytes(HEX_H);
+                nbw_cache.WriteByte((byte)0x45);
+                nbw_cache.WriteBytes(HEX_H);
+                xxxxxxxxxx = ms_cache.ToArray();
+            }
+            byte[] MACc2s = hash_key.ComputeHash(xxxxxxxxxx);
+
+            {
+                MemoryStream ms_cache = new MemoryStream();
+                NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
+                nbw_cache.WriteMPInt(KEX_K);
+                nbw_cache.WriteBytes(HEX_H);
+                nbw_cache.WriteByte((byte)0x46);
+                nbw_cache.WriteBytes(HEX_H);
+                xxxxxxxxxx = ms_cache.ToArray();
+            }
+            byte[] MACs2c = hash_key.ComputeHash(xxxxxxxxxx);
+
+            // auth
+
+            {
+                MemoryStream ms_cache = new MemoryStream();
+                NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
+                //SSH_MSG_USERAUTH_REQUEST
+                nbw_cache.WriteByte(50);
+                nbw_cache.WriteString("root");
+                nbw_cache.WriteString("ssh-connection");
+                nbw_cache.WriteString("password");
+                nbw_cache.WriteByte((byte)0);
+                nbw_cache.WriteString("root");
+
+                // s2ccipher.init(Cipher.DECRYPT_MODE, Es2c, IVs2c);
+
+                RijndaelManaged rijndael = new RijndaelManaged();
+                rijndael.Mode = CipherMode.CBC;
+                rijndael.Padding = PaddingMode.None;
+
+                {
+                    byte[] tmp = new byte[16];
+                    Array.Copy(Ec2s, 0, tmp, 0, tmp.Length);
+                    Ec2s = tmp;
+                }
+
+                {
+                    byte[] tmp = new byte[16];
+                    Array.Copy(IVc2s, 0, tmp, 0, tmp.Length);
+                    IVc2s = tmp;
+                }
+
+                {
+                    byte[] tmp = new byte[16];
+                    Array.Copy(Es2c, 0, tmp, 0, tmp.Length);
+                    Es2c = tmp;
+                }
+
+                {
+                    byte[] tmp = new byte[16];
+                    Array.Copy(IVs2c, 0, tmp, 0, tmp.Length);
+                    IVs2c = tmp;
+                }
+                ICryptoTransform cipher_c2s = rijndael.CreateEncryptor(Ec2s, IVc2s);
+                ICryptoTransform cipher_s2c = rijndael.CreateDecryptor(Es2c, IVs2c);
+
+                byte[] packet = TerminalClient.CreatePackage(ms_cache.ToArray());
+                packet = TerminalClient.MakePadding(packet, 16);
+
+                HashAlgorithm hash_mac = SHA1.Create();
+                byte[] mac = TerminalClient.ComputeMAC(MACc2s, 3, packet, hash_mac);
+                cipher_c2s.TransformBlock(packet, 0, packet.Length, packet, 0);
+
+                nbw.WriteBytes(packet);
+                nbw.WriteBytes(mac);
+                nbw.Flush();
+
+
+                byte[] recv = nbr.ReadBytes(32);
+
+                cipher_s2c.TransformBlock(recv, 0, recv.Length, recv, 0);
+
+                for (int i = 0; i < 32; i++ )
+                {
+                    char c = (char)recv[i];
+                    Console.Write(c);
+                }
             }
 
             int pos = 0;
@@ -230,8 +394,8 @@ namespace TerminalConsole
             server_host_key_algorithms = new string[] { "ssh-rsa", "ssh-dss" };
             encryption_algorithms_client_to_server = new string[] { "aes128-cbc", "3des-cbc" };
             encryption_algorithms_server_to_client = new string[] { "aes128-cbc", "3des-cbc" };
-            mac_algorithms_client_to_server = new string[] { "hmac-sha1-96", "hmac-sha1" };
-            mac_algorithms_server_to_client = new string[] { "hmac-sha1-96", "hmac-sha1" };
+            mac_algorithms_client_to_server = new string[] { "hmac-sha1", "hmac-sha1-96" };
+            mac_algorithms_server_to_client = new string[] { "hmac-sha1", "hmac-sha1-96" };
             compression_algorithms_client_to_server = new string[] { "none" };
             compression_algorithms_server_to_client = new string[] { "none" };
             languages_client_to_server = new string[] { };
