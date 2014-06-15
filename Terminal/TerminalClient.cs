@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Sockets;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
@@ -10,6 +11,53 @@ namespace Terminal
     public class TerminalClient
     {
         public static string version = "SSH-2.0-TerminalSharp";
+
+        int size_block;
+        public TerminalClient()
+        {
+            size_block = 8;
+        }
+        TcpClient tcpclient;
+        NetworkByteReader reader;
+        NetworkByteWriter writer;
+
+        public bool Connect(string address, int port) {
+            tcpclient = new TcpClient(address, port);
+            NetworkStream ns = tcpclient.GetStream();
+            reader = new NetworkByteReader(ns);
+            writer = new NetworkByteWriter(ns);
+            return false;
+        }
+        public void VersionExchange()
+        {
+            // local stream reader writer
+            StreamReader sr = new StreamReader(tcpclient.GetStream());
+            StreamWriter wr = new StreamWriter(tcpclient.GetStream());
+
+            // Version Exchange
+            string version_server = sr.ReadLine();
+            Console.WriteLine("Server Version: " + version_server);
+            wr.WriteLine(TerminalClient.version);
+            wr.Flush();
+        }
+
+        // KeyExchange is a multibyte packet based action
+        public void KeyExchange()
+        {
+
+        }
+
+        public void FetchPacket(ICryptoTransform decryptor)
+        {
+            /*
+            uint packet_length = reader.ReadUInt32();
+            byte padding_length = writer.ReadByte();
+            byte[] payload = br.ReadBytes(packet_length - padding_length - 1);
+            byte[] padding = br.ReadBytes(padding_length);
+            return payload;
+             * */
+        }
+
         public static byte[] CreatePackage(byte[] playload)
         {
             uint size = (uint)playload.Length;

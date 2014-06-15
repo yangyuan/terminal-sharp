@@ -33,7 +33,15 @@ namespace TerminalConsole
             // learn and test
             Debug();
 
-            TcpClient tc = new TcpClient("192.168.192.132", 22);
+            TerminalClient tc = new TerminalClient();
+            tc.Connect("192.168.192.132", 8022);
+        }
+        static void Main2(string[] args)
+        {
+            // learn and test
+            Debug();
+
+            TcpClient tc = new TcpClient("192.168.192.132", 8022);
             NetworkStream ns = tc.GetStream();
             NetworkByteReader nbr = new NetworkByteReader(ns);
             NetworkByteWriter nbw = new NetworkByteWriter(ns);
