@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Numerics;
+using System.Security.Cryptography;
 using System.Text;
 using Terminal;
 
@@ -14,7 +15,7 @@ namespace TerminalConsole
         static void Main(string[] args)
         {
             // learn and test
-
+            //DiffieHellmanX.Debug();
 
             TcpClient tc = new TcpClient("192.168.192.132", 22);
             NetworkStream ns = tc.GetStream();
@@ -43,13 +44,13 @@ namespace TerminalConsole
             nbw.Flush();
 
             ExchangeMethods ems = PackageKEXINIT.Negotiate(pkex_client, pkex);
-
+            BigInteger xxxxxxxxxxxe = DiffieHellmanX.CreateE();
             {
-                BigInteger e = DiffieHellman.CreateE();
+                
                 MemoryStream ms = new MemoryStream();
                 NetworkByteWriter nbw2 = new NetworkByteWriter(ms);
                 nbw2.WriteByte(30); // SSH_MSG_KEXDH_INIT
-                nbw2.WriteMPInt(e);
+                nbw2.WriteMPInt(xxxxxxxxxxxe);
                 nbw2.Flush();
 
                 byte[] data = ms.ToArray();
@@ -73,7 +74,7 @@ namespace TerminalConsole
                 string id = nbr3.ReadString();
                 BigInteger rsa_e = nbr3.ReadMPInt();
                 BigInteger rsa_n = nbr3.ReadMPInt();
-             
+
                 BigInteger f = nbr2.ReadMPInt();
                 byte[] signature = nbr2.ReadBlob();
 
@@ -84,8 +85,8 @@ namespace TerminalConsole
                 byte[] rsa_signature_blob = nbr4.ReadBlob();
 
 
-                System.Security.Cryptography.SHA1CryptoServiceProvider sha1 = new System.Security.Cryptography.SHA1CryptoServiceProvider();
-                System.Security.Cryptography.RSAParameters RSAKeyInfo = new System.Security.Cryptography.RSAParameters();
+                //SHA1CryptoServiceProvider sha1 = new SHA1CryptoServiceProvider();
+                RSAParameters RSAKeyInfo = new RSAParameters();
 
                 byte[] b_n = rsa_n.ToByteArray();
                 byte[] b_e = rsa_e.ToByteArray();
@@ -94,13 +95,47 @@ namespace TerminalConsole
                 Array.Reverse(b_n2);
                 Array.Reverse(b_e);
 
-                System.Security.Cryptography.CryptoStream cs = new System.Security.Cryptography.CryptoStream(System.IO.Stream.Null, sha1, System.Security.Cryptography.CryptoStreamMode.Write);
+
+
+                MemoryStream ms5 = new MemoryStream();
+                NetworkByteWriter nbw5 = new NetworkByteWriter(ms5);
+
+                string V_C = TerminalClient.version;
+                string V_S = version;
+                byte[] K_S = certificates;
+                byte[] I_C = pkex_client.Pack();
+                byte[] I_S = kex;
+                BigInteger HHH_e = xxxxxxxxxxxe;
+                BigInteger HHH_f = f;
+                BigInteger HHH_K = DiffieHellmanX.ComputeK(f);
+
+                nbw5.WriteString(V_C);
+                nbw5.WriteString(V_S);
+                nbw5.WriteBlob(I_C);
+                nbw5.WriteBlob(I_S);
+                nbw5.WriteBlob(K_S);
+                nbw5.WriteMPInt(HHH_e);
+                nbw5.WriteMPInt(HHH_f);
+                nbw5.WriteMPInt(HHH_K);
+                nbw5.Flush();
+
+
+                HashAlgorithm hash = SHA1.Create();
+                byte[] xxx = ms5.ToArray();
+
+                byte[] hash_result = hash.ComputeHash(xxx);
+
+
+                //CryptoStream cs = new CryptoStream(null, sha1, CryptoStreamMode.Write);
                 /*
                 buf.reset();
-                    buf.putString(V_C); buf.putString(V_S);
-                    buf.putString(I_C); buf.putString(I_S);
+                    buf.putString(V_C);
+                 * buf.putString(V_S);
+                    buf.putString(I_C);
+                 * buf.putString(I_S);
                     buf.putString(K_S);
-                    buf.putMPInt(e); buf.putMPInt(f);
+                    buf.putMPInt(e);
+                 * buf.putMPInt(f);
                     buf.putMPInt(K);
                     byte[] foo=new byte[buf.getLength()];
                     buf.getByte(foo);
@@ -113,10 +148,17 @@ namespace TerminalConsole
 
                 RSAKeyInfo.Modulus = b_n2;
                 RSAKeyInfo.Exponent = b_e;
-                System.Security.Cryptography.RSACryptoServiceProvider RSA = new System.Security.Cryptography.RSACryptoServiceProvider();
+                RSACryptoServiceProvider RSA = new RSACryptoServiceProvider();
                 RSA.ImportParameters(RSAKeyInfo);
-                System.Security.Cryptography.RSAPKCS1SignatureDeformatter RSADeformatter = new System.Security.Cryptography.RSAPKCS1SignatureDeformatter(RSA);
+                RSAPKCS1SignatureDeformatter RSADeformatter = new RSAPKCS1SignatureDeformatter(RSA);
                 RSADeformatter.SetHashAlgorithm("SHA1");
+
+                SHA1CryptoServiceProvider sha1 = new SHA1CryptoServiceProvider();
+                CryptoStream cs = new System.Security.Cryptography.CryptoStream(System.IO.Stream.Null, sha1, CryptoStreamMode.Write);
+                cs.Write(hash_result, 0, hash_result.Length);
+                cs.Close();
+
+
                 bool verify = RSADeformatter.VerifySignature(sha1, rsa_signature_blob);
             }
 
@@ -269,7 +311,7 @@ namespace TerminalConsole
 
 
 
-    public class DiffieHellman
+    public class DiffieHellmanX
     {
         static byte[] P2 = new byte[] { 0x00, 
             0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC9, 0x0F, 0xDA, 0xA2,
@@ -312,25 +354,104 @@ namespace TerminalConsole
         static byte[] PX = new byte[] { 0x00, 
             0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,  0x00
         };
+
+        static byte[] PY = new byte[] { 0x00, 
+            0xFF, 0xFF, 0xFF, 0xF1, 0xFF, 0xFF, 0xF2, 0xFF,  0x00
+        };
+
+        static byte[] G = new byte[] { 0x02, 
+        };
+
+        /*
         public static BigInteger CreateE()
         {
-            byte[] p2 = P2;
+            dh = new DiffieHellmanManaged(P2, G, 0);
+            byte[] e_array = dh.CreateKeyExchange();
+            Array.Reverse(e_array);
+            BigInteger bi = new BigInteger(e_array);
+            return bi;
+        }
+
+        public static BigInteger ComputeK(BigInteger f)
+        {
+            byte[] f_array = f.ToByteArray();
+            Array.Reverse(f_array);
+            byte[] K_array = dh.DecryptKeyExchange(f_array);
+            Array.Reverse(K_array);
+            BigInteger bi = new BigInteger(K_array);
+            return bi;
+        } 
+         * */
+
+        public static BigInteger CreateE()
+        {
+            byte[] p2 = (byte[])P2.Clone();
             Array.Reverse(p2);
             BigInteger p = new BigInteger(p2);
             BigInteger g = new BigInteger(2);
             BigInteger x = new BigInteger(PX);
 
 
-            BigInteger y = new BigInteger(13);
-
-
             BigInteger x_p = BigInteger.ModPow(g, x, p);
 
-            BigInteger y_p = BigInteger.ModPow(g, y, p);
+            return x_p;
+        }
+
+        public static BigInteger ComputeK(BigInteger f)
+        {
+            byte[] p2 = (byte[])P2.Clone();
+            Array.Reverse(p2);
+            BigInteger p = new BigInteger(p2);
+            BigInteger g = new BigInteger(2);
+            BigInteger x = new BigInteger(PX);
+
+            BigInteger k1 = BigInteger.ModPow(f, x, p);
+            return k1;
+        }
+
+
+        public static void Debug()
+        {
+
+            //MPInt m = new MPInt();
+            //byte[] sss = m.ToByteArray();
+            //byte[] ss1 = m.ToByteArray();
+
+            //sss[0] = 1;
+
+            /*
+            byte[] p2 = (byte[])P2.Clone();
+            Array.Reverse(p2);
+            BigInteger p = new BigInteger(p2);
+            BigInteger g = new BigInteger(2);
+            BigInteger x = new BigInteger(PX);
+            BigInteger x_p = BigInteger.ModPow(g, x, p);
+
+            dh = new DiffieHellmanManaged(P2, G, 0);
+            byte[] e_array = dh.CreateKeyExchange();
+            Array.Reverse(e_array);
+            BigInteger y_p = new BigInteger(e_array);
+
+
+
+
+
+
+
+
+
+            byte[] f_array = x_p.ToByteArray();
+            Array.Reverse(f_array);
+            byte[] K_array = dh.DecryptKeyExchange(f_array);
+            Array.Reverse(K_array);
+            BigInteger bi = new BigInteger(K_array);
+
 
             BigInteger k1 = BigInteger.ModPow(y_p, x, p);
-            BigInteger k2 = BigInteger.ModPow(x_p, y, p);
-            return x_p;
-        } 
+            byte[] K2_array = k1.ToByteArray();
+             * 
+             * */
+        }
+        
     }
 }

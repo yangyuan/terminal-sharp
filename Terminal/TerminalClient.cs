@@ -44,6 +44,8 @@ namespace Terminal
 
     }
 
+
+
     public class NetworkByteWriter
     {
         BinaryWriter bw;
@@ -84,6 +86,11 @@ namespace Terminal
             byte[] result = Encoding.UTF8.GetBytes(data);
             WriteUInt32((UInt32)result.Length);
             bw.Write(result);
+        }
+        public void WriteBlob(Byte[] data)
+        {
+            WriteUInt32((UInt32)data.Length);
+            bw.Write(data);
         }
         public void WriteNameList(String[] data)
         {
