@@ -33,7 +33,7 @@ namespace TerminalConsole
             // learn and test
             Debug();
 
-            TcpClient tc = new TcpClient("192.168.192.132", 8022);
+            TcpClient tc = new TcpClient("192.168.192.132", 22);
             NetworkStream ns = tc.GetStream();
             NetworkByteReader nbr = new NetworkByteReader(ns);
             NetworkByteWriter nbw = new NetworkByteWriter(ns);
@@ -258,50 +258,47 @@ namespace TerminalConsole
             }
             byte[] MACs2c = hash_key.ComputeHash(xxxxxxxxxx);
 
+            {
+                byte[] tmp = new byte[16];
+                Array.Copy(Ec2s, 0, tmp, 0, tmp.Length);
+                Ec2s = tmp;
+            }
+
+            {
+                byte[] tmp = new byte[16];
+                Array.Copy(IVc2s, 0, tmp, 0, tmp.Length);
+                IVc2s = tmp;
+            }
+
+            {
+                byte[] tmp = new byte[16];
+                Array.Copy(Es2c, 0, tmp, 0, tmp.Length);
+                Es2c = tmp;
+            }
+
+            {
+                byte[] tmp = new byte[16];
+                Array.Copy(IVs2c, 0, tmp, 0, tmp.Length);
+                IVs2c = tmp;
+            }
+
+            RijndaelManaged rijndael = new RijndaelManaged();
+            rijndael.Mode = CipherMode.CBC;
+            rijndael.Padding = PaddingMode.None;
+
+
+            ICryptoTransform cipher_c2s = rijndael.CreateEncryptor(Ec2s, IVc2s);
+            ICryptoTransform cipher_s2c = rijndael.CreateDecryptor(Es2c, IVs2c);
+
             // auth
 
             {
                 MemoryStream ms_cache = new MemoryStream();
                 NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
                 //SSH_MSG_USERAUTH_REQUEST
-                nbw_cache.WriteByte(50);
-                nbw_cache.WriteString("root");
-                nbw_cache.WriteString("ssh-connection");
-                nbw_cache.WriteString("password");
-                nbw_cache.WriteByte((byte)0);
-                nbw_cache.WriteString("root");
+                nbw_cache.WriteByte(5);
+                nbw_cache.WriteString("ssh-userauth");
 
-                // s2ccipher.init(Cipher.DECRYPT_MODE, Es2c, IVs2c);
-
-                RijndaelManaged rijndael = new RijndaelManaged();
-                rijndael.Mode = CipherMode.CBC;
-                rijndael.Padding = PaddingMode.None;
-
-                {
-                    byte[] tmp = new byte[16];
-                    Array.Copy(Ec2s, 0, tmp, 0, tmp.Length);
-                    Ec2s = tmp;
-                }
-
-                {
-                    byte[] tmp = new byte[16];
-                    Array.Copy(IVc2s, 0, tmp, 0, tmp.Length);
-                    IVc2s = tmp;
-                }
-
-                {
-                    byte[] tmp = new byte[16];
-                    Array.Copy(Es2c, 0, tmp, 0, tmp.Length);
-                    Es2c = tmp;
-                }
-
-                {
-                    byte[] tmp = new byte[16];
-                    Array.Copy(IVs2c, 0, tmp, 0, tmp.Length);
-                    IVs2c = tmp;
-                }
-                ICryptoTransform cipher_c2s = rijndael.CreateEncryptor(Ec2s, IVc2s);
-                ICryptoTransform cipher_s2c = rijndael.CreateDecryptor(Es2c, IVs2c);
 
                 byte[] packet = TerminalClient.CreatePackage(ms_cache.ToArray());
                 packet = TerminalClient.MakePadding(packet, 16);
@@ -319,10 +316,59 @@ namespace TerminalConsole
 
                 cipher_s2c.TransformBlock(recv, 0, recv.Length, recv, 0);
 
+                for (int i = 0; i < 32; i++)
+                {
+                    char c = (char)recv[i];
+                    Console.Write(c);
+                }
+
+                recv = nbr.ReadBytes(20);
+
+            }
+
+            {
+                MemoryStream ms_cache = new MemoryStream();
+                NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
+                //SSH_MSG_USERAUTH_REQUEST
+                nbw_cache.WriteByte(50);
+                nbw_cache.WriteString("root");
+                nbw_cache.WriteString("ssh-connection");
+                nbw_cache.WriteString("password");
+                nbw_cache.WriteByte((byte)0);
+                nbw_cache.WriteString("root");
+
+                // s2ccipher.init(Cipher.DECRYPT_MODE, Es2c, IVs2c);
+
+                //rijndael = new RijndaelManaged();
+               // rijndael.Mode = CipherMode.CBC;
+               // rijndael.Padding = PaddingMode.None;
+                //cipher_c2s = rijndael.CreateEncryptor(Ec2s, IVc2s);
+                byte[] packet = TerminalClient.CreatePackage(ms_cache.ToArray());
+                packet = TerminalClient.MakePadding(packet, 16);
+
+                HashAlgorithm hash_mac = SHA1.Create();
+                byte[] mac = TerminalClient.ComputeMAC(MACc2s, 4, packet, hash_mac);
+                cipher_c2s.TransformBlock(packet, 0, packet.Length, packet, 0);
+
+                nbw.WriteBytes(packet);
+                nbw.WriteBytes(mac);
+                nbw.Flush();
+
+                const int SSH_MSG_USERAUTH_SUCCESS = 52;
+
+                byte[] recv = nbr.ReadBytes(32);
+                //cipher_s2c = rijndael.CreateDecryptor(Es2c, IVs2c);
+                cipher_s2c.TransformBlock(recv, 0, recv.Length, recv, 0);
+
                 for (int i = 0; i < 32; i++ )
                 {
                     char c = (char)recv[i];
                     Console.Write(c);
+                }
+
+                if (SSH_MSG_USERAUTH_SUCCESS == recv[5])
+                {
+                    Console.WriteLine("oh ya!");
                 }
             }
 

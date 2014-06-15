@@ -90,43 +90,6 @@ namespace Terminal
             return hash.Hash;
         }
 
-        public static byte[] ComputeMAC2(byte[] key, uint seqo, byte[] data, HashAlgorithm hash)
-        {
-            Org.Mentalis.Security.Cryptography.HMAC mentalis_mac = new Org.Mentalis.Security.Cryptography.HMAC(new SHA1CryptoServiceProvider(), key);
-            CryptoStream cs = new CryptoStream(Stream.Null, mentalis_mac, CryptoStreamMode.Write);
-
-            MemoryStream ms_cache = new MemoryStream();
-            NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
-            nbw_cache.WriteUInt32(seqo);
-            nbw_cache.WriteBytes(data);
-            nbw_cache.Flush();
-            byte[] xxx = ms_cache.ToArray();
-            cs.Write(xxx, 0, xxx.Length);
-            cs.Close();
-
-            byte[] key_buffer = new byte[64];
-            Array.Clear(key_buffer, 0, key_buffer.Length);
-            Array.Copy(key, 0, key_buffer, 0, key.Length);
-
-            byte[] padding1 = new byte[64];
-            for (int i = 0; i < 64; i++)
-                padding1[i] = (byte)(key_buffer[i] ^ 0x36);
-            byte[] padding2 = new byte[64];
-            for (int i = 0; i < 64; i++)
-                padding2[i] = (byte)(key_buffer[i] ^ 0x5C);
-
-            hash.Initialize();
-            hash.TransformBlock(padding1, 0, padding1.Length, padding1, 0);
-            hash.TransformFinalBlock(xxx, 0, xxx.Length);
-            xxx = (byte[])hash.Hash.Clone();
-            hash.Initialize();
-            hash.TransformBlock(padding2, 0, padding2.Length, padding2, 0);
-            hash.TransformFinalBlock(xxx, 0, xxx.Length);
-
-            byte[] xx = hash.Hash;
-
-            return mentalis_mac.Hash;
-        }
     }
 
 
