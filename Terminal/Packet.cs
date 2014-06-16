@@ -15,6 +15,11 @@ namespace Terminal
         public const int SSH_MSG_USERAUTH_REQUEST = 5;
         public const int SSH_MSG_SERVICE_ACCEPT = 6;
         public const int SSH_MSG_USERAUTH_SUCCESS = 52;
+        public const int SSH_MSG_CHANNEL_OPEN = 90;
+        public const int SSH_MSG_CHANNEL_OPEN_CONFIRMATION = 91;
+        public const int SSH_MSG_CHANNEL_WINDOW_ADJUST = 93;
+        public const int SSH_MSG_CHANNEL_DATA = 94;
+        public const int SSH_MSG_CHANNEL_REQUEST = 98;
         public int Message { get; protected set; }
         protected byte[] payload;
         public Packet()
@@ -35,12 +40,33 @@ namespace Terminal
             if (payload == null) Pack();
             return (byte[])payload.Clone();
         }
+        public NetworkByteReader GenerateReader() {
+            MemoryStream ms = new MemoryStream((byte[])payload.Clone());
+            return new NetworkByteReader(ms);
+        }
 
         virtual public void Parse()
         {
         }
         virtual public void Pack()
         {
+        }
+    }
+
+    public class PacketChannelData : Packet
+    {
+        public PacketChannelData(Packet p)
+            : base(p)
+        {
+        }
+        override public void Parse()
+        {
+            MemoryStream ms = new MemoryStream(payload);
+            NetworkByteReader nbr = new NetworkByteReader(ms);
+            nbr.ReadByte();
+            nbr.ReadUInt32();
+            string data = nbr.ReadString();
+            Console.Write(data);
         }
     }
 

@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 
 namespace Terminal
 {
@@ -50,7 +51,6 @@ namespace Terminal
         ICryptoTransform crypto_decryptor;
         HashAlgorithm crypto_mac_decryptor;
         HashAlgorithm crypto_mac_encryptor;
-        byte[] crypto_mac_encryptor_key;
 
         public bool Connect(string address, int port) {
             tcpclient = new TcpClient(address, port);
@@ -109,6 +109,95 @@ namespace Terminal
             verify_f = f;
             BigInteger K = dh.ComputeKey(f);
             verify_k = K;
+        }
+
+        public void OpenChannel()
+        {
+            PacketGeneral packet_openchannel = new PacketGeneral(90);
+            NetworkByteWriter nbw = packet_openchannel.GetStreamWriter();
+            nbw.WriteString("session");
+            nbw.WriteUInt32(0);
+            nbw.WriteUInt32(1048576);
+            nbw.WriteUInt32(16384);
+
+            SendPacket(crypto_encryptor, packet_openchannel);
+
+            Packet packet = RecvPacket(crypto_decryptor);
+            NetworkByteReader nbr = packet.GenerateReader();
+
+            nbr.ReadByte();
+            uint recipient_channel = nbr.ReadUInt32();
+
+            uint sender_channel = nbr.ReadUInt32();
+            uint initial_window_size = nbr.ReadUInt32();
+            uint maximum_packet_size = nbr.ReadUInt32();
+
+
+            PacketGeneral packet_pty = new PacketGeneral(Packet.SSH_MSG_CHANNEL_REQUEST);
+            nbw = packet_pty.GetStreamWriter();
+            nbw.WriteUInt32(recipient_channel);
+            nbw.WriteString("pty-req");
+            nbw.WriteByte(0);
+            nbw.WriteString("vt100");
+            nbw.WriteUInt32(80);
+            nbw.WriteUInt32(24);
+            nbw.WriteUInt32(640);
+            nbw.WriteUInt32(480);
+            nbw.WriteString("");
+            SendPacket(crypto_encryptor, packet_pty);
+
+            PacketGeneral packet_shell = new PacketGeneral(Packet.SSH_MSG_CHANNEL_REQUEST);
+            nbw = packet_shell.GetStreamWriter();
+            nbw.WriteUInt32(recipient_channel);
+            nbw.WriteString("shell");
+            nbw.WriteByte(0);
+            SendPacket(crypto_encryptor, packet_shell);
+
+            
+
+            while (true)
+            {
+
+                if (RecvAvailable())
+                {
+                    packet = RecvPacket(crypto_decryptor);
+                    switch (packet.Message)
+                    {
+                        case Packet.SSH_MSG_CHANNEL_WINDOW_ADJUST:
+                            break;
+                        case Packet.SSH_MSG_CHANNEL_DATA:
+                            PacketChannelData p = new PacketChannelData(packet);
+                            p.Parse();
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                else
+                {
+                    if (Console.KeyAvailable)
+                    {
+                        string data = Console.ReadLine();
+                        PacketGeneral packet_key = new PacketGeneral(Packet.SSH_MSG_CHANNEL_DATA);
+                        nbw = packet_key.GetStreamWriter();
+                        nbw.WriteUInt32(recipient_channel);
+                        nbw.WriteString(data + "\n");
+                        SendPacket(crypto_encryptor, packet_key);
+                    }
+                    Thread.Sleep(00);
+                }
+            }
+
+            
+        }
+
+        public void DumpError(Packet packet)
+        {
+            MemoryStream ms = new MemoryStream(packet.GetPayload());
+            NetworkByteReader nbr = new NetworkByteReader(ms);
+            nbr.ReadByte();
+            nbr.ReadUInt32();
+            string xxx = nbr.ReadString();
         }
         public void KeyVerify(string algorithm, HashAlgorithm hash)
         {
@@ -297,8 +386,8 @@ namespace Terminal
             crypto_encryptor = rijndael.CreateEncryptor(Ec2s, IVc2s);
             crypto_decryptor = rijndael.CreateDecryptor(Es2c, IVs2c);
 
-            crypto_mac_encryptor = SHA1.Create();
-            crypto_mac_encryptor_key = MACc2s;
+            crypto_mac_encryptor = HMACSHA1.Create();
+            ((HMAC)crypto_mac_encryptor).Key = MACc2s;
         }
         private string NegotiateAlgorithm(string[] client, string[] server)
         {
@@ -371,12 +460,11 @@ namespace Terminal
             {
                 blocksize = Math.Max(encryptor.InputBlockSize, blocksize);
                 uint size = (uint)payload.Length;
-                size += 5;
+                size += (5 + (uint)encryptor.InputBlockSize);
                 size = (uint)((size + blocksize) / blocksize * blocksize);
 
                 uint packet_length = size - 4;
                 byte padding_length = (byte)(size - 5 - payload.Length);
-
                 MemoryStream ms = new MemoryStream();
                 NetworkByteWriter nbw = new NetworkByteWriter(ms);
 
@@ -386,8 +474,20 @@ namespace Terminal
                 for (int i = 0; i < padding_length; i++) nbw.WriteByte(0x0C);
                 nbw.Flush();
 
+                // compute mac
                 byte[] cache = ms.ToArray();
-                byte[] mac = TerminalClient.ComputeMAC(crypto_mac_encryptor_key, (uint)sequence, cache, crypto_mac_encryptor);
+                
+                MemoryStream ms_mac = new MemoryStream();
+                NetworkByteWriter nbw_mac = new NetworkByteWriter(ms_mac);
+                nbw_mac.WriteUInt32((uint)sequence);
+                nbw_mac.WriteBytes(cache);
+                nbw_mac.Flush();
+                byte[] mac = crypto_mac_encryptor.ComputeHash(ms_mac.ToArray());
+
+
+
+
+
                 crypto_encryptor.TransformBlock(cache, 0, cache.Length, cache, 0);
 
                 writer.WriteBytes(cache);
@@ -402,7 +502,9 @@ namespace Terminal
 
 
         }
-
+        public bool RecvAvailable () {
+            return tcpclient.Available != 0;
+        }
         public Packet RecvPacket(ICryptoTransform decryptor)
         {
             if (decryptor == null)
@@ -466,39 +568,6 @@ namespace Terminal
                 return packet;
             }
         }
-
-        public static byte[] CreatePackage(byte[] playload)
-        {
-            uint size = (uint)playload.Length;
-            size += 5;
-            size = (size + 16) / 16 * 16;
-
-            uint packet_length = size - 4;
-            byte padding_length = (byte)(size - 5 - playload.Length);
-
-            byte[] result = new byte[size];
-            byte[] padding = new byte[padding_length];
-
-            MemoryStream ms = new MemoryStream(result);
-            NetworkByteWriter nbw = new NetworkByteWriter(ms);
-
-            nbw.WriteUInt32(packet_length);
-            nbw.WriteByte(padding_length);
-            nbw.WriteBytes(playload);
-            nbw.WriteBytes(padding);
-            nbw.Flush();
-            return result;
-        }
-
-        public static byte[] ParsePackage(NetworkByteReader br)
-        {
-            uint packet_length = br.ReadUInt32();
-            byte padding_length = br.ReadByte();
-            byte[] payload = br.ReadBytes(packet_length - padding_length - 1);
-            byte[] padding = br.ReadBytes(padding_length);
-            return payload;
-        }
-
         public static byte[] ComputeMAC(byte[] key, uint seqo, byte[] data, HashAlgorithm hash)
         {
             MemoryStream ms_cache = new MemoryStream();
