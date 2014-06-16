@@ -55,6 +55,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Cryptography.cs" />
+    <Compile Include="Packet.cs" />
     <Compile Include="TerminalClient.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>

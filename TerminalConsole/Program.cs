@@ -37,12 +37,15 @@ namespace TerminalConsole
 
 
             TerminalClient tc = new TerminalClient();
-            tc.Connect("192.168.192.200", 22);
+            tc.Connect("192.168.192.200", 8022);
             tc.VersionExchange();
             tc.KeyExchangeInit();
             tc.KeyExchange(tc.algorithm_kex);
+            tc.KeyExchangeFinal();
             HashAlgorithm hash_sha1 = SHA1.Create();
             tc.KeyVerify(tc.algorithm_server_host_key, hash_sha1);
+            tc.PrepareCryptoTransforms();
+            tc.Authenticate();
         }
 
         
