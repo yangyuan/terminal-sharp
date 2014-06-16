@@ -14,6 +14,9 @@ namespace TerminalConsole
     {
         static void Debug()
         {
+            BigInteger e = DiffieHellmanX.CreateE();
+            BigInteger f = new BigInteger(0);
+            DiffieHellmanX.ComputeK(f);
             /*
             HashAlgorithm hash = MD5.Create();
             MemoryStream ms_cache = new MemoryStream();
@@ -30,12 +33,19 @@ namespace TerminalConsole
         }
         static void Main(string[] args)
         {
-            // learn and test
-            Debug();
+            HashAlgorithm hash = MD5.Create();
+
 
             TerminalClient tc = new TerminalClient();
-            tc.Connect("192.168.192.132", 8022);
+            tc.Connect("192.168.192.200", 22);
+            tc.VersionExchange();
+            tc.KeyExchangeInit();
+            tc.KeyExchange(tc.algorithm_kex);
+            HashAlgorithm hash_sha1 = SHA1.Create();
+            tc.KeyVerify(tc.algorithm_server_host_key, hash_sha1);
         }
+
+        
         static void Main2(string[] args)
         {
             // learn and test
