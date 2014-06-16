@@ -153,8 +153,8 @@ namespace Terminal
             nbw.WriteByte(0);
             SendPacket(crypto_encryptor, packet_shell);
 
-            
 
+            return;
             while (true)
             {
 
@@ -175,6 +175,7 @@ namespace Terminal
                 }
                 else
                 {
+                    /*
                     if (Console.KeyAvailable)
                     {
                         string data = Console.ReadLine();
@@ -185,6 +186,7 @@ namespace Terminal
                         SendPacket(crypto_encryptor, packet_key);
                     }
                     Thread.Sleep(00);
+                     * */
                 }
             }
 

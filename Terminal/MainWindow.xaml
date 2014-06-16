@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="MainWindow" Height="350" Width="525">
     <Grid>
-        
+        <TextBox Margin="10" TextWrapping="Wrap" Text="TextBox" FontFamily="Consolas" PreviewKeyDown="TextBox_PreviewKeyDown"/>
+
     </Grid>
 </Window>
