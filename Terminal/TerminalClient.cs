@@ -111,7 +111,7 @@ namespace Terminal
             verify_k = K;
         }
 
-        public void OpenChannel()
+        public void OpenChannel(ChannelScreen x)
         {
             PacketGeneral packet_openchannel = new PacketGeneral(90);
             NetworkByteWriter nbw = packet_openchannel.GetStreamWriter();
@@ -154,7 +154,6 @@ namespace Terminal
             SendPacket(crypto_encryptor, packet_shell);
 
 
-            return;
             while (true)
             {
 
@@ -168,6 +167,7 @@ namespace Terminal
                         case Packet.SSH_MSG_CHANNEL_DATA:
                             PacketChannelData p = new PacketChannelData(packet);
                             p.Parse();
+                            x.HandleServerData(p.data);
                             break;
                         default:
                             break;
@@ -175,18 +175,14 @@ namespace Terminal
                 }
                 else
                 {
-                    /*
-                    if (Console.KeyAvailable)
-                    {
-                        string data = Console.ReadLine();
+                    string data = x.GetClientData();
+                    if (data.Length!= 0) {
                         PacketGeneral packet_key = new PacketGeneral(Packet.SSH_MSG_CHANNEL_DATA);
                         nbw = packet_key.GetStreamWriter();
                         nbw.WriteUInt32(recipient_channel);
-                        nbw.WriteString(data + "\n");
+                        nbw.WriteString(data);
                         SendPacket(crypto_encryptor, packet_key);
                     }
-                    Thread.Sleep(00);
-                     * */
                 }
             }
 
@@ -287,7 +283,8 @@ namespace Terminal
         }
         public void PrepareCryptoTransforms()
         {
-            byte[] xxxxxxxxxx;
+            
+            byte[] key_cache;
             HashAlgorithm hash_key = SHA1.Create();
             //
             {
@@ -297,64 +294,21 @@ namespace Terminal
                 nbw_cache.WriteBytes(verify_h);
                 nbw_cache.WriteByte((byte)0x41);
                 nbw_cache.WriteBytes(verify_h);
-                xxxxxxxxxx = ms_cache.ToArray();
+                key_cache = ms_cache.ToArray();
             }
-            byte[] IVc2s = hash_key.ComputeHash(xxxxxxxxxx);
+            byte[] IVc2s = hash_key.ComputeHash(key_cache);
+            int j = key_cache.Length - verify_h.Length - 1;
+            key_cache[j] = 0x42;
+            byte[] IVs2c = hash_key.ComputeHash(key_cache);
+            key_cache[j] = 0x43;
+            byte[] Ec2s = hash_key.ComputeHash(key_cache);
+            key_cache[j] = 0x44;
+            byte[] Es2c = hash_key.ComputeHash(key_cache);
+            key_cache[j] = 0x45;
+            byte[] MACc2s = hash_key.ComputeHash(key_cache);
+            key_cache[j] = 0x46;
+            byte[] MACs2c = hash_key.ComputeHash(key_cache);
 
-            {
-                MemoryStream ms_cache = new MemoryStream();
-                NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
-                nbw_cache.WriteMPInt(verify_k);
-                nbw_cache.WriteBytes(verify_h);
-                nbw_cache.WriteByte((byte)0x42);
-                nbw_cache.WriteBytes(verify_h);
-                xxxxxxxxxx = ms_cache.ToArray();
-            }
-            byte[] IVs2c = hash_key.ComputeHash(xxxxxxxxxx);
-
-            {
-                MemoryStream ms_cache = new MemoryStream();
-                NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
-                nbw_cache.WriteMPInt(verify_k);
-                nbw_cache.WriteBytes(verify_h);
-                nbw_cache.WriteByte((byte)0x43);
-                nbw_cache.WriteBytes(verify_h);
-                xxxxxxxxxx = ms_cache.ToArray();
-            }
-            byte[] Ec2s = hash_key.ComputeHash(xxxxxxxxxx);
-
-            {
-                MemoryStream ms_cache = new MemoryStream();
-                NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
-                nbw_cache.WriteMPInt(verify_k);
-                nbw_cache.WriteBytes(verify_h);
-                nbw_cache.WriteByte((byte)0x44);
-                nbw_cache.WriteBytes(verify_h);
-                xxxxxxxxxx = ms_cache.ToArray();
-            }
-            byte[] Es2c = hash_key.ComputeHash(xxxxxxxxxx);
-
-            {
-                MemoryStream ms_cache = new MemoryStream();
-                NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
-                nbw_cache.WriteMPInt(verify_k);
-                nbw_cache.WriteBytes(verify_h);
-                nbw_cache.WriteByte((byte)0x45);
-                nbw_cache.WriteBytes(verify_h);
-                xxxxxxxxxx = ms_cache.ToArray();
-            }
-            byte[] MACc2s = hash_key.ComputeHash(xxxxxxxxxx);
-
-            {
-                MemoryStream ms_cache = new MemoryStream();
-                NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
-                nbw_cache.WriteMPInt(verify_k);
-                nbw_cache.WriteBytes(verify_h);
-                nbw_cache.WriteByte((byte)0x46);
-                nbw_cache.WriteBytes(verify_h);
-                xxxxxxxxxx = ms_cache.ToArray();
-            }
-            byte[] MACs2c = hash_key.ComputeHash(xxxxxxxxxx);
 
             {
                 byte[] tmp = new byte[16];
@@ -569,20 +523,6 @@ namespace Terminal
 
                 return packet;
             }
-        }
-        public static byte[] ComputeMAC(byte[] key, uint seqo, byte[] data, HashAlgorithm hash)
-        {
-            MemoryStream ms_cache = new MemoryStream();
-            NetworkByteWriter nbw_cache = new NetworkByteWriter(ms_cache);
-            nbw_cache.WriteUInt32(seqo);
-            nbw_cache.WriteBytes(data);
-            nbw_cache.Flush();
-            byte[] xxx = ms_cache.ToArray();
-
-            HMAC hmac = HMACSHA1.Create();
-            hmac.Key = key;
-
-            return hmac.ComputeHash(xxx);
         }
 
     }

@@ -29,7 +29,7 @@ namespace TerminalConsole
             tc.KeyVerify(tc.algorithm_server_host_key, hash_sha1);
             tc.PrepareCryptoTransforms();
             tc.Authenticate();
-            tc.OpenChannel();
+            //tc.OpenChannel();
         }
 
     }

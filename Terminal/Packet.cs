@@ -55,6 +55,7 @@ namespace Terminal
 
     public class PacketChannelData : Packet
     {
+        public string data;
         public PacketChannelData(Packet p)
             : base(p)
         {
@@ -65,7 +66,7 @@ namespace Terminal
             NetworkByteReader nbr = new NetworkByteReader(ms);
             nbr.ReadByte();
             nbr.ReadUInt32();
-            string data = nbr.ReadString();
+            data = nbr.ReadString();
             Console.Write(data);
         }
     }

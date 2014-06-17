@@ -1,9 +1,10 @@
 ﻿<Window x:Class="Terminal.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MainWindow" Height="350" Width="525">
+        Title="MainWindow" Height="480" Width="640">
     <Grid>
-        <TextBox Margin="10" TextWrapping="Wrap" Text="TextBox" FontFamily="Consolas" PreviewKeyDown="TextBox_PreviewKeyDown"/>
+        <TextBox Name="TextBox_Console" Margin="10,10,10,96" TextWrapping="Wrap" Text="" FontFamily="Consolas" PreviewKeyDown="TextBox_PreviewKeyDown" PreviewTextInput="TextBox_Console_PreviewTextInput" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" TextOptions.TextHintingMode="Fixed" TextOptions.TextFormattingMode="Display"/>
+        <Canvas Name="Screen" HorizontalAlignment="Left" Height="100" Margin="215,209,0,0" VerticalAlignment="Top" Width="187"/>
 
     </Grid>
 </Window>
