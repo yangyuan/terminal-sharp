@@ -28,7 +28,7 @@ namespace TerminalConsole
             HashAlgorithm hash_sha1 = SHA1.Create();
             tc.KeyVerify(tc.algorithm_server_host_key, hash_sha1);
             tc.PrepareCryptoTransforms();
-            tc.Authenticate();
+            tc.Authenticate("","");
             //tc.OpenChannel();
         }
 

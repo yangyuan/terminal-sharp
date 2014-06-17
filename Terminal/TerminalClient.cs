@@ -111,7 +111,7 @@ namespace Terminal
             verify_k = K;
         }
 
-        public void OpenChannel(ChannelScreen x)
+        public void OpenChannel(VideoTerminal x)
         {
             PacketGeneral packet_openchannel = new PacketGeneral(90);
             NetworkByteWriter nbw = packet_openchannel.GetStreamWriter();
@@ -252,7 +252,7 @@ namespace Terminal
             Packet packet = RecvPacket(null);
             SendPacket(null, packet);
         }
-        public void Authenticate()
+        public void Authenticate(string username, string password)
         {
             PacketGeneral packet_auth = new PacketGeneral(Packet.SSH_MSG_USERAUTH_REQUEST);
             packet_auth.GetStreamWriter().WriteString("ssh-userauth");
@@ -266,11 +266,11 @@ namespace Terminal
             packet_auth = new PacketGeneral(50);
             NetworkByteWriter nbw_cache = packet_auth.GetStreamWriter();
             //SSH_MSG_USERAUTH_REQUEST
-            nbw_cache.WriteString("root");
+            nbw_cache.WriteString(username);
             nbw_cache.WriteString("ssh-connection");
             nbw_cache.WriteString("password");
             nbw_cache.WriteByte((byte)0);
-            nbw_cache.WriteString("root");
+            nbw_cache.WriteString(password);
 
             SendPacket(crypto_encryptor, packet_auth);
 

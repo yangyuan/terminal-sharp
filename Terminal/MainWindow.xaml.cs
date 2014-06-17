@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -23,13 +24,16 @@ namespace Terminal
     /// </summary>
     public partial class MainWindow : Window
     {
-        ChannelScreen s = new ChannelScreen();
         public MainWindow()
         {
             InitializeComponent();
 
             Thread tWriteToFile = new Thread(new ThreadStart(OpenSSH));
+            tWriteToFile.IsBackground = true;
             tWriteToFile.Start();
+
+
+            VideoTerminal_Main.Focus();
         }
 
         public void OpenSSH()
@@ -45,29 +49,27 @@ namespace Terminal
             HashAlgorithm hash_sha1 = SHA1.Create();
             tc.KeyVerify(tc.algorithm_server_host_key, hash_sha1);
             tc.PrepareCryptoTransforms();
-            tc.Authenticate();
-            s.SetTextBox(TextBox_Console);
-            tc.OpenChannel(s);
+            tc.Authenticate("root", "root");
+
+            tc.OpenChannel(VideoTerminal_Main);
         }
 
-        private void TextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        private void VideoTerminal_Main_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            string x = e.Text;
+            Console.WriteLine(e.Text);
+            VideoTerminal_Main.HandleClientData(e.Text);
+            e.Handled = true;
+        }
+
+        private void VideoTerminal_Main_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter || e.Key == Key.Up || e.Key == Key.Space || e.Key == Key.Back)
             {
                 Console.WriteLine(e.Key);
-                s.HandleClientData(e.Key);
+                VideoTerminal_Main.HandleClientData(e.Key);
                 e.Handled = true;
             }
-        }
-
-        private void TextBox_Console_PreviewTextInput(object sender, TextCompositionEventArgs e)
-        {
-            string x = e.Text;
-            Console.WriteLine(e.Text);
-            s.HandleClientData(e.Text);
-            e.Handled = true;
-            TextBox_Console.SelectionStart = TextBox_Console.Text.Length;
-            TextBox_Console.ScrollToEnd();
         }
     }
 }
