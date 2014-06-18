@@ -56,7 +56,7 @@ namespace Terminal
             System.Threading.Timer timer;
             public double CaretHeight { get; set; }
             int blinkPeriod = 500;
-            Pen pen = new Pen(Brushes.Black, 1);
+            Pen pen = new Pen(Brushes.White, 2);
 
             public static readonly DependencyProperty VisibleProperty =
               DependencyProperty.Register("Visible", typeof(bool),
@@ -80,8 +80,8 @@ namespace Terminal
             {
                 if (Visible)
                 {
-                    location.Y = (double)LocationY * 14;
-                    location.X = LocationX * 7;
+                    location.Y = (double)LocationY * 14 + 4;
+                    location.X = LocationX * 7 + 4;
                     dc.DrawLine(pen, location, new Point(location.X, location.Y + CaretHeight));
                 }
             }
@@ -202,12 +202,13 @@ namespace Terminal
                 }
                 else
                 {
+                    drawingContext.DrawRectangle(Brushes.Black, null, new Rect(new Point(0, 0), new Point(80 * 7 + 8, 24 * 14 + 8)));
 
                     for (int i = 0; i < 80; i++)
                     {
                         for (int j = 0; j < 24; j++)
                         {
-                            drawingContext.DrawText(Buffer[i, j].GetFormattedText(), new Point(i * 7, j * 14));
+                            drawingContext.DrawText(Buffer[i, j].GetFormattedText(), new Point(i * 7 + 4, j * 14 + 4));
                         }
                     }
                 }
@@ -280,7 +281,55 @@ namespace Terminal
         {
         }
 
+        private void PushCharToTerminal(char ch)
+        {
+            VideoTerminalChar c = new VideoTerminalChar (ch);
+            screen.Buffer[caret.LocationX, caret.LocationY] = c;
+            caret.LocationX++;
+            AdjustTerminalCaret();
+        }
 
+        private void AdjustTerminalCaret()
+        {
+            if (caret.LocationY == 24)
+            {
+                for (int j = 1; j < 24; j++)
+                {
+                    for (int i = 0; i < 80; i++)
+                    {
+                        screen.Buffer[i, j - 1] = screen.Buffer[i, j];
+                    }
+                }
+                for (int i = 0; i < 80; i++)
+                {
+                    screen.Buffer[i, 23] = new VideoTerminalChar();
+                }
+                caret.LocationY--;
+            }
+            if (caret.LocationX == 80)
+            {
+                caret.LocationX = 0;
+                caret.LocationY++;
+            }
+            if (caret.LocationY == 24)
+            {
+                for (int j = 1; j < 24; j++)
+                {
+                    for (int i = 0; i < 80; i++)
+                    {
+                        screen.Buffer[i, j - 1] = screen.Buffer[i, j];
+                    }
+                }
+                for (int i = 0; i < 80; i++)
+                {
+                    screen.Buffer[i, 23] = new VideoTerminalChar();
+                }
+                caret.LocationY--;
+            }
+        }
+
+        int state_input = 0;
+        List<char> state_cache = new List<char>();
         public void HandleServerData(string data)
         {
 
@@ -290,64 +339,133 @@ namespace Terminal
             char[] chars = data.ToCharArray();
             foreach (char c in chars)
             {
-                if (c == '\r')
+                if (state_input == 0)
                 {
-                    caret.LocationX = 0;
-                }
-                else if (c == '\n')
-                {
-                    caret.LocationY++;
-                }
-                else if (c == '\b')
-                {
-
-                }
-                else if (c == 033)
-                {
-                    //
-                }
-                else
-                {
-                    screen.Buffer[caret.LocationX, caret.LocationY] = new VideoTerminalChar(c);
-                    caret.LocationX++;
-                }
-
-
-                if (caret.LocationY == 24)
-                {
-                    for (int j = 1; j < 24; j++)
+                    switch (c)
                     {
-                        for (int i = 0; i < 80; i++)
+                        case '\a':
+                            break;
+                        case '\r':
+                            caret.LocationX = 0;
+                            break;
+                        case '\n':
+                            caret.LocationY++;
+                            break;
+                        case '\b':
+                            if (caret.LocationX > 0)
+                            {
+                                caret.LocationX -= 1;
+
+                                AdjustTerminalCaret();
+                            }
+                            break;
+                        case (char)27:
+                            state_cache.Add((char)27);
+                            state_input = 1;
+                            break;
+                        default:
+                            PushCharToTerminal(c);
+                            break;
+                    }
+                    AdjustTerminalCaret();
+                }
+                else if (state_input == 1)
+                {
+                    switch (c)
+                    {
+                        case '[':
+                            state_cache.Add('[');
+                            state_input = 2;
+                            break;
+                        default:
+                            foreach (char cs in state_cache)
+                            {
+                                PushCharToTerminal(cs);
+                            }
+                            PushCharToTerminal(c);
+                            break;
+                    }
+                }
+                else if (state_input == 2)
+                {
+                    if ((c >= '0' && c <= '9') || c == ';')
+                    {
+                        state_cache.Add(c);
+                    }
+                    else
+                    {
+                        if (c == 'm')
                         {
-                            screen.Buffer[i, j - 1] = screen.Buffer[i, j];
                         }
-                    }
-                    for (int i = 0; i < 80; i++)
-                    {
-                        screen.Buffer[i, 23] = new VideoTerminalChar();
-                    }
-                    caret.LocationY--;
-                }
-                if (caret.LocationX == 80)
-                {
-                    caret.LocationX = 0;
-                    caret.LocationY++;
-                }
-                if (caret.LocationY == 24)
-                {
-                    for (int j = 1; j < 24; j++)
-                    {
-                        for (int i = 0; i < 80; i++)
+                        else if (c == 'K')
                         {
-                            screen.Buffer[i, j - 1] = screen.Buffer[i, j];
+                            for (int i = caret.LocationX; i < 80; i++)
+                            {
+                                screen.Buffer[i, caret.LocationY] = new VideoTerminalChar();
+                            }
                         }
+                        else if (c == 'C')
+                        {
+                            char[] x = state_cache.ToArray();
+                            string s = new String(x, 2, x.Length - 2);
+                            int pad = 1;
+                            if (s.Length != 0)
+                            {
+                                pad = Int32.Parse(s);
+                            }
+                            for (int i = 0; i < pad; i++)
+                            {
+                                caret.LocationX++;
+                                AdjustTerminalCaret();
+                            }
+                        }
+                        else if (c == 'A')
+                        {
+                            caret.LocationY--;
+                        }
+                        else if (c == 'H')
+                        {
+                            char[] x = state_cache.ToArray();
+                            string s = new String(x, 2, x.Length - 2);
+                            string[] xx = s.Split(";".ToArray(), StringSplitOptions.RemoveEmptyEntries);
+                            int xxx_x = 0;
+                            int xxx_y = 0;
+                            if (xx.Length != 0)
+                            {
+                                xxx_x = Int32.Parse(xx[1]) - 1;
+                                xxx_y = Int32.Parse(xx[0]) - 1;
+                            }
+                            caret.LocationX = xxx_x;
+                            caret.LocationY = xxx_y;
+                        }
+                        else if (c == 'J')
+                        {
+                            for (int j = 0; j < 24; j++)
+                            {
+                                for (int i = 0; i < 80; i++)
+                                {
+                                    screen.Buffer[i, j] = new VideoTerminalChar();
+                                }
+                            }
+                        }
+                        else if (c == 'r')
+                        { }
+                        else
+                        {
+                            foreach (char cs in state_cache)
+                            {
+                                PushCharToTerminal(cs);
+                            }
+                            PushCharToTerminal(c);
+                        }
+                        AdjustTerminalCaret();
+                        state_cache = new List<char>();
+                        state_input = 0;
                     }
-                    for (int i = 0; i < 80; i++)
-                    {
-                        screen.Buffer[i, 23] = new VideoTerminalChar();
-                    }
-                    caret.LocationY--;
                 }
+
+
+                
             }
             VideoTerminalChar[,] XXX = (VideoTerminalChar[,])screen.Buffer.Clone();
             screen.Visible = false;
@@ -367,6 +485,14 @@ namespace Terminal
             else if (data == Key.Space)
             {
                 buff += " ";
+            }
+            else if (data == Key.Up)
+            {
+                buff += (char)0x0B;
+            }
+            else if (data == Key.Left)
+            {
+                buff += (char)0x09;
             }
             else
             {
@@ -395,7 +521,7 @@ namespace Terminal
             static FlowDirection flowdirection = FlowDirection.LeftToRight;
             static Typeface typeface = new Typeface("Consolas, Simsun");
             static double fontsize = 12;
-            static Brush fontcolor = Brushes.Black;
+            static Brush fontcolor = Brushes.White;
 
             FormattedText formattedText;
             string value;

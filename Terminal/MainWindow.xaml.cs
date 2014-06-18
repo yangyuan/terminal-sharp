@@ -28,20 +28,16 @@ namespace Terminal
         {
             InitializeComponent();
 
-            Thread tWriteToFile = new Thread(new ThreadStart(OpenSSH));
-            tWriteToFile.IsBackground = true;
-            tWriteToFile.Start();
-
 
             VideoTerminal_Main.Focus();
         }
 
-        public void OpenSSH()
+        public void OpenSSH(string host, int port, string username, string password)
         {
 
             TerminalClient tc = new TerminalClient();
             //"192.168.192.200"
-            tc.Connect("192.168.192.132", 22);
+            tc.Connect(host, port);
             tc.VersionExchange();
             tc.KeyExchangeInit();
             tc.KeyExchange(tc.algorithm_kex);
@@ -49,7 +45,7 @@ namespace Terminal
             HashAlgorithm hash_sha1 = SHA1.Create();
             tc.KeyVerify(tc.algorithm_server_host_key, hash_sha1);
             tc.PrepareCryptoTransforms();
-            tc.Authenticate("root", "root");
+            tc.Authenticate(username, password);
 
             tc.OpenChannel(VideoTerminal_Main);
         }
@@ -64,12 +60,39 @@ namespace Terminal
 
         private void VideoTerminal_Main_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter || e.Key == Key.Up || e.Key == Key.Space || e.Key == Key.Back)
+            if (e.Key == Key.Enter || e.Key == Key.Up || e.Key == Key.Space || e.Key == Key.Back || e.Key == Key.Left)
             {
                 Console.WriteLine(e.Key);
                 VideoTerminal_Main.HandleClientData(e.Key);
                 e.Handled = true;
             }
+        }
+
+        private void MenuItem_Debug_Click(object sender, RoutedEventArgs e)
+        {
+            //Thread tWriteToFile = new Thread(new ThreadStart(OpenSSH));
+            //tWriteToFile.IsBackground = true;
+            //tWriteToFile.Start();
+        }
+
+        private void TreeViewItem_Debug_Selected(object sender, RoutedEventArgs e)
+        {
+            
+        }
+
+        private void TreeViewItem_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            Thread tWriteToFile = new Thread(delegate()
+            {
+                OpenSSH("192.168.192.200", 22, "root", "root");
+            });
+            tWriteToFile.IsBackground = true;
+            tWriteToFile.Start();
+        }
+
+        private void TreeView_GotFocus(object sender, RoutedEventArgs e)
+        {
+            VideoTerminal_Main.Focus();
         }
     }
 }

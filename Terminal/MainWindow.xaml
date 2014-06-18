@@ -2,10 +2,20 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Terminal" x:Class="Terminal.MainWindow"
-        Title="MainWindow" Height="480" Width="640">
+        Title="MainWindow" Height="512" Width="800">
     <Grid>
-        <local:VideoTerminal x:Name="VideoTerminal_Main" Margin="10" Focusable="True" PreviewTextInput="VideoTerminal_Main_PreviewTextInput" PreviewKeyDown="VideoTerminal_Main_PreviewKeyDown"/>
+
+        <Menu VerticalAlignment="Top">
+            <MenuItem Header="_FILE">
+                <MenuItem Header="_DEBUG" Click="MenuItem_Debug_Click"/>
+            </MenuItem>
+        </Menu>
+        <local:VideoTerminal x:Name="VideoTerminal_Main" Focusable="True" PreviewTextInput="VideoTerminal_Main_PreviewTextInput" PreviewKeyDown="VideoTerminal_Main_PreviewKeyDown" Margin="171,18,0,0"/>
+        <TreeView HorizontalAlignment="Left" Margin="0,18,0,0" Width="166" GotFocus="TreeView_GotFocus">
+            <TreeViewItem Header="192.168.192.200" Selected="TreeViewItem_Debug_Selected" MouseDoubleClick="TreeViewItem_MouseDoubleClick" />
+        </TreeView>
 
 
     </Grid>
+
 </Window>
