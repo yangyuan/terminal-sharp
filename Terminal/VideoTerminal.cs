@@ -283,10 +283,24 @@ namespace Terminal
 
         private void PushCharToTerminal(char ch)
         {
-            VideoTerminalChar c = new VideoTerminalChar (ch);
+            int width = TerminalMist.GetCharWidth(ch);
+            if (width == 0 && ch != 0) return;
+            VideoTerminalChar c;
+            if (ch == 0)
+            {
+                c = new VideoTerminalChar();
+            }
+            else
+            {
+                c = new VideoTerminalChar(ch);
+            }
             screen.Buffer[caret.LocationX, caret.LocationY] = c;
             caret.LocationX++;
             AdjustTerminalCaret();
+            if (width == 2)
+            {
+                PushCharToTerminal((char)0);
+            }
         }
 
         private void AdjustTerminalCaret()

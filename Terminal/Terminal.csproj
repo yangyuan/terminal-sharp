@@ -57,6 +57,7 @@
     <Compile Include="Cryptography.cs" />
     <Compile Include="NetworkByte.cs" />
     <Compile Include="Packet.cs" />
+    <Compile Include="Terminal.cs" />
     <Compile Include="TerminalClient.cs" />
     <Compile Include="VideoTerminal.cs" />
     <Page Include="MainWindow.xaml">
