@@ -75,12 +75,13 @@ namespace Terminal
             //tWriteToFile.Start();
         }
 
-        private void TreeViewItem_Debug_Selected(object sender, RoutedEventArgs e)
+
+        private void TreeView_GotFocus(object sender, RoutedEventArgs e)
         {
-            
+            VideoTerminal_Main.Focus();
         }
 
-        private void TreeViewItem_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        private void Button_Click(object sender, RoutedEventArgs e)
         {
             Thread tWriteToFile = new Thread(delegate()
             {
@@ -88,11 +89,6 @@ namespace Terminal
             });
             tWriteToFile.IsBackground = true;
             tWriteToFile.Start();
-        }
-
-        private void TreeView_GotFocus(object sender, RoutedEventArgs e)
-        {
-            VideoTerminal_Main.Focus();
         }
     }
 }

@@ -5,15 +5,15 @@
         Title="MainWindow" Height="512" Width="800">
     <Grid>
 
-        <Menu VerticalAlignment="Top">
-            <MenuItem Header="_FILE">
+        <Menu VerticalAlignment="Top" Height="25" Background="#FFF0F0F0" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}">
+            <MenuItem Header="_FILE" Height="24" Width="50">
                 <MenuItem Header="_DEBUG" Click="MenuItem_Debug_Click"/>
             </MenuItem>
         </Menu>
-        <local:VideoTerminal x:Name="VideoTerminal_Main" Focusable="True" PreviewTextInput="VideoTerminal_Main_PreviewTextInput" PreviewKeyDown="VideoTerminal_Main_PreviewKeyDown" Margin="171,18,0,0"/>
-        <TreeView HorizontalAlignment="Left" Margin="0,18,0,0" Width="166" GotFocus="TreeView_GotFocus">
-            <TreeViewItem Header="192.168.192.200" Selected="TreeViewItem_Debug_Selected" MouseDoubleClick="TreeViewItem_MouseDoubleClick" />
-        </TreeView>
+        <local:VideoTerminal x:Name="VideoTerminal_Main" Focusable="True" PreviewTextInput="VideoTerminal_Main_PreviewTextInput" PreviewKeyDown="VideoTerminal_Main_PreviewKeyDown" Margin="0,58,0,10"/>
+        <StackPanel HorizontalAlignment="Left" Height="37" Margin="0,24,0,0" VerticalAlignment="Top" Width="792" Background="#FFF0F0F0" Orientation="Horizontal">
+            <Button Content="192.168.192.200" HorizontalAlignment="Left" Width="104" Height="24" Margin="5,6,5,7" Click="Button_Click" Focusable="False" IsTabStop="False" BorderBrush="{x:Null}"/>
+        </StackPanel>
 
 
     </Grid>
