@@ -70,25 +70,12 @@ namespace Terminal
 
         private void MenuItem_Debug_Click(object sender, RoutedEventArgs e)
         {
-            //Thread tWriteToFile = new Thread(new ThreadStart(OpenSSH));
-            //tWriteToFile.IsBackground = true;
-            //tWriteToFile.Start();
-        }
-
-
-        private void TreeView_GotFocus(object sender, RoutedEventArgs e)
-        {
-            VideoTerminal_Main.Focus();
-        }
-
-        private void Button_Click(object sender, RoutedEventArgs e)
-        {
-            Thread tWriteToFile = new Thread(delegate()
+            Thread thread_ssh = new Thread(delegate()
             {
                 OpenSSH("192.168.192.200", 22, "root", "root");
             });
-            tWriteToFile.IsBackground = true;
-            tWriteToFile.Start();
+            thread_ssh.IsBackground = true;
+            thread_ssh.Start();
         }
     }
 }

@@ -16,40 +16,11 @@ using System.Windows.Threading;
 
 namespace Terminal
 {
-    /// <summary>
-    /// Follow steps 1a or 1b and then 2 to use this custom control in a XAML file.
-    ///
-    /// Step 1a) Using this custom control in a XAML file that exists in the current project.
-    /// Add this XmlNamespace attribute to the root element of the markup file where it is 
-    /// to be used:
-    ///
-    ///     xmlns:MyNamespace="clr-namespace:Terminal"
-    ///
-    ///
-    /// Step 1b) Using this custom control in a XAML file that exists in a different project.
-    /// Add this XmlNamespace attribute to the root element of the markup file where it is 
-    /// to be used:
-    ///
-    ///     xmlns:MyNamespace="clr-namespace:Terminal;assembly=Terminal"
-    ///
-    /// You will also need to add a project reference from the project where the XAML file lives
-    /// to this project and Rebuild to avoid compilation errors:
-    ///
-    ///     Right click on the target project in the Solution Explorer and
-    ///     "Add Reference"->"Projects"->[Browse to and select this project]
-    ///
-    ///
-    /// Step 2)
-    /// Go ahead and use your control in the XAML file.
-    ///
-    ///     <MyNamespace:VideoTerminal/>
-    ///
-    /// </summary>
-    public class VideoTerminal : UserControl
+    public class VideoTerminal : Control
     {
         static VideoTerminal()
         {
-            DefaultStyleKeyProperty.OverrideMetadata(typeof(VideoTerminal), new FrameworkPropertyMetadata(typeof(VideoTerminal)));
+            
         }
         class Caret : FrameworkElement
         {
@@ -57,17 +28,9 @@ namespace Terminal
             public double CaretHeight { get; set; }
             int blinkPeriod = 500;
             Pen pen = new Pen(Brushes.White, 2);
-
-            public static readonly DependencyProperty VisibleProperty =
-              DependencyProperty.Register("Visible", typeof(bool),
-              typeof(Caret), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
-
-            public static readonly DependencyProperty LocationPropertyX =
-              DependencyProperty.Register("LocationX", typeof(int),
-              typeof(Caret), new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.AffectsRender));
-            public static readonly DependencyProperty LocationPropertyY =
-              DependencyProperty.Register("LocationY", typeof(int),
-              typeof(Caret), new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.AffectsRender));
+            public static readonly DependencyProperty VisibleProperty = DependencyProperty.Register("Visible", typeof(bool), typeof(Caret), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+            public static readonly DependencyProperty LocationPropertyX = DependencyProperty.Register("LocationX", typeof(int), typeof(Caret), new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.AffectsRender));
+            public static readonly DependencyProperty LocationPropertyY = DependencyProperty.Register("LocationY", typeof(int), typeof(Caret), new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.AffectsRender));
             public Caret()
             {
                 pen.Freeze();
@@ -134,7 +97,6 @@ namespace Terminal
         class Screen : FrameworkElement
         {
             string content = "";
-
             public VideoTerminalChar[,] Buffer
             {
                 get
@@ -171,13 +133,8 @@ namespace Terminal
                 }
             }
 
-            public static readonly DependencyProperty BufferProperty =
-              DependencyProperty.Register("Buffer", typeof(VideoTerminalChar[,]),
-              typeof(Screen), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
-
-            public static readonly DependencyProperty VisibleProperty =
-              DependencyProperty.Register("Visible", typeof(bool),
-              typeof(Screen), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+            public static readonly DependencyProperty BufferProperty = DependencyProperty.Register("Buffer", typeof(VideoTerminalChar[,]), typeof(Screen), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+            public static readonly DependencyProperty VisibleProperty = DependencyProperty.Register("Visible", typeof(bool), typeof(Screen), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
             protected override void OnRender(DrawingContext drawingContext)
             {
                 base.OnRender(drawingContext);
