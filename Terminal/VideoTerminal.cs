@@ -16,87 +16,77 @@ using System.Windows.Threading;
 
 namespace Terminal
 {
-    public class VideoTerminal : Control
+    public class VideoTerminal : FrameworkElement
     {
         static VideoTerminal()
         {
             
         }
-        class Caret : FrameworkElement
+        public Size CharSize { get; set; }
+        public Typeface CharFont = new Typeface("Consolas, Simsun");
+        public double CharFontSize = 12;
+        public Thickness Padding { get; set; }
+        Pen CaretPen;
+        public Brush Foreground { get; set; }
+        public Brush Background { get; set; }
+        VideoTerminalCaret caret;
+        VideoTerminalScreen screen;
+        public VideoTerminal()
         {
-            System.Threading.Timer timer;
-            public double CaretHeight { get; set; }
-            int blinkPeriod = 500;
-            Pen pen = new Pen(Brushes.White, 2);
-            public static readonly DependencyProperty VisibleProperty = DependencyProperty.Register("Visible", typeof(bool), typeof(Caret), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
-            public static readonly DependencyProperty LocationPropertyX = DependencyProperty.Register("LocationX", typeof(int), typeof(Caret), new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.AffectsRender));
-            public static readonly DependencyProperty LocationPropertyY = DependencyProperty.Register("LocationY", typeof(int), typeof(Caret), new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.AffectsRender));
-            public Caret()
+            CharSize = new Size(7, 14);
+            Padding = new Thickness(4);
+            Foreground = Brushes.White;
+            Background = Brushes.Black;
+            CaretPen = new Pen(Foreground, 2);
+            caret = new VideoTerminalCaret(this);
+            screen = new VideoTerminalScreen(this);
+            this.AddVisualChild(caret);
+            this.AddVisualChild(screen);
+        }
+
+        class VideoTerminalCaret : UIElement
+        {
+            public int Column { get; set; }
+            public int Row { get; set; }
+            bool blinkvisible;
+            DispatcherTimer blinktimer;
+            VideoTerminal videoterminal;
+            public VideoTerminalCaret(VideoTerminal parent)
             {
-                pen.Freeze();
-                CaretHeight = 14;
-                Visible = true;
-                timer = new System.Threading.Timer(blinkCaret, null, 0, blinkPeriod);
+                videoterminal = parent;
+                blinkvisible = true;
+                blinktimer = new DispatcherTimer();
+                blinktimer.Interval = new TimeSpan(0, 0, 0, 0, 500);
+                blinktimer.Tick += new EventHandler(Blink);
+                blinktimer.Start();
             }
-            Point location;
+            void Blink(object sender, EventArgs e)
+            {
+                blinkvisible = !blinkvisible;
+                InvalidateVisual();
+            }
+            void Refresh()
+            {
+                InvalidateVisual();
+            }
             protected override void OnRender(DrawingContext dc)
             {
-                if (Visible)
+                if (blinkvisible)
                 {
-                    location.Y = (double)LocationY * 14 + 4;
-                    location.X = LocationX * 7 + 4;
-                    dc.DrawLine(pen, location, new Point(location.X, location.Y + CaretHeight));
+                    Point coordinate = new Point();
+                    coordinate.Y = (double)Row * videoterminal.CharSize.Height + videoterminal.Padding.Top;
+                    coordinate.X = Column * videoterminal.CharSize.Width + videoterminal.Padding.Left;
+                    dc.DrawLine(videoterminal.CaretPen, coordinate, new Point(coordinate.X, coordinate.Y + videoterminal.CharSize.Height));
                 }
-            }
-
-
-            public int LocationX
-            {
-                get
-                {
-                    return (int)GetValue(LocationPropertyX);
-                }
-                set
-                {
-                    SetValue(LocationPropertyX, value);
-                }
-            }
-
-            public int LocationY
-            {
-                get
-                {
-                    return (int)GetValue(LocationPropertyY);
-                }
-                set
-                {
-                    SetValue(LocationPropertyY, value);
-                }
-            }
-
-            bool Visible
-            {
-                get
-                {
-                    return (bool)GetValue(VisibleProperty);
-                }
-                set
-                {
-                    SetValue(VisibleProperty, value);
-                }
-            }
-
-            void blinkCaret(Object state)
-            {
-                Dispatcher.Invoke(new Action(delegate { Visible = !Visible; }));
             }
         }
 
         
 
-        class Screen : FrameworkElement
+        class VideoTerminalScreen : FrameworkElement
         {
-            string content = "";
+            VideoTerminal videoterminal;
+            public bool Ready = true;
             public VideoTerminalChar[,] Buffer
             {
                 get
@@ -109,36 +99,24 @@ namespace Terminal
                 }
             }
 
-            public bool Visible
+            public VideoTerminalScreen(VideoTerminal parent)
             {
-                get
-                {
-                    return (bool)GetValue(VisibleProperty);
-                }
-                set
-                {
-                    SetValue(VisibleProperty, value);
-                }
-            }
-
-            public Screen()
-            {
+                videoterminal = parent;
                 Buffer = new VideoTerminalChar[80, 24];
                 for (int i = 0; i < 80; i++)
                 {
                     for (int j = 0; j < 24; j++)
                     {
-                        Buffer[i, j] = new VideoTerminalChar();
+                        Buffer[i, j] = new VideoTerminalChar(videoterminal);
                     }
                 }
             }
 
-            public static readonly DependencyProperty BufferProperty = DependencyProperty.Register("Buffer", typeof(VideoTerminalChar[,]), typeof(Screen), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
-            public static readonly DependencyProperty VisibleProperty = DependencyProperty.Register("Visible", typeof(bool), typeof(Screen), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+            public static readonly DependencyProperty BufferProperty = DependencyProperty.Register("Buffer", typeof(VideoTerminalChar[,]), typeof(VideoTerminalScreen), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
             protected override void OnRender(DrawingContext drawingContext)
             {
                 base.OnRender(drawingContext);
-                if (content == "")
+                if (Ready == false)
                 {
                     string testString = "Terminal Sharp\r\nA full C# based ssh2 terminal";
 
@@ -155,11 +133,10 @@ namespace Terminal
                     formattedText.SetForegroundBrush(new LinearGradientBrush(Colors.Orange, Colors.Teal, 90.0), 9, 5);
                     drawingContext.DrawText(formattedText, new Point(10, 0));
 
-                    content = "1";
                 }
                 else
                 {
-                    drawingContext.DrawRectangle(Brushes.Black, null, new Rect(new Point(0, 0), new Point(80 * 7 + 8, 24 * 14 + 8)));
+                    drawingContext.DrawRectangle(videoterminal.Background, null, new Rect(new Point(0, 0), new Point(80 * 7 + 8, 24 * 14 + 8)));
 
                     for (int i = 0; i < 80; i++)
                     {
@@ -172,17 +149,40 @@ namespace Terminal
             }
         }
 
-
-        Caret caret = new Caret();
-        Screen screen = new Screen();
-        public VideoTerminal()
+        class VideoTerminalChar
         {
-
-            //this.AddChild(screen);
-            this.AddVisualChild(caret);
-            this.AddVisualChild(screen);
-            this.Background = null;
+            public int Width {get; private set;} // such as 0, 1, 2
+            public string Value { get; private set; }
+            static CultureInfo cultureinfo = CultureInfo.GetCultureInfo("en-us");
+            static FlowDirection flowdirection = FlowDirection.LeftToRight;
+            FormattedText formattedText;
+            VideoTerminal videoterminal;
+            public VideoTerminalChar(VideoTerminal parent)
+            {
+                videoterminal = parent;
+                Format("", 0);
+            }
+            public VideoTerminalChar(VideoTerminal parent, char c)
+            {
+                videoterminal = parent;
+                Format(c.ToString(), 1);
+            }
+            public VideoTerminalChar(VideoTerminal parent, char c, int width)
+            {
+                videoterminal = parent;
+                Format(c.ToString(), width);
+            }
+            public FormattedText GetFormattedText()
+            {
+                return formattedText;
+            }
+            void Format(string value, int width)
+            {
+                Value = value;
+                formattedText = new FormattedText(Value, cultureinfo, flowdirection, videoterminal.CharFont, videoterminal.CharFontSize, videoterminal.Foreground);
+            }
         }
+        
 
         protected override int VisualChildrenCount
         {
@@ -201,18 +201,22 @@ namespace Terminal
                     return screen;
             }
         }
-        /*
+      
         protected override Size MeasureOverride(Size availableSize)
         {
             if (this.VisualChildrenCount > 0)
             {
                 UIElement child = this.GetVisualChild(0) as UIElement;
                 child.Measure(availableSize);
-                return child.DesiredSize;
+
+                child = this.GetVisualChild(1) as UIElement;
+                child.Measure(availableSize);
+                //return child.DesiredSize;
             }
 
             return availableSize;
-        }*/
+        }
+    
 
         protected override Size ArrangeOverride(Size finalSize)
         {
@@ -240,19 +244,20 @@ namespace Terminal
 
         private void PushCharToTerminal(char ch)
         {
+            screen.Ready = true;
             int width = TerminalMist.GetCharWidth(ch);
             if (width == 0 && ch != 0) return;
             VideoTerminalChar c;
             if (ch == 0)
             {
-                c = new VideoTerminalChar();
+                c = new VideoTerminalChar(this);
             }
             else
             {
-                c = new VideoTerminalChar(ch);
+                c = new VideoTerminalChar(this, ch);
             }
-            screen.Buffer[caret.LocationX, caret.LocationY] = c;
-            caret.LocationX++;
+            screen.Buffer[caret.Column, caret.Row] = c;
+            caret.Column++;
             AdjustTerminalCaret();
             if (width == 2)
             {
@@ -262,7 +267,7 @@ namespace Terminal
 
         private void AdjustTerminalCaret()
         {
-            if (caret.LocationY == 24)
+            if (caret.Row == 24)
             {
                 for (int j = 1; j < 24; j++)
                 {
@@ -273,16 +278,16 @@ namespace Terminal
                 }
                 for (int i = 0; i < 80; i++)
                 {
-                    screen.Buffer[i, 23] = new VideoTerminalChar();
+                    screen.Buffer[i, 23] = new VideoTerminalChar(this);
                 }
-                caret.LocationY--;
+                caret.Row--;
             }
-            if (caret.LocationX == 80)
+            if (caret.Column == 80)
             {
-                caret.LocationX = 0;
-                caret.LocationY++;
+                caret.Column = 0;
+                caret.Row++;
             }
-            if (caret.LocationY == 24)
+            if (caret.Row == 24)
             {
                 for (int j = 1; j < 24; j++)
                 {
@@ -293,9 +298,9 @@ namespace Terminal
                 }
                 for (int i = 0; i < 80; i++)
                 {
-                    screen.Buffer[i, 23] = new VideoTerminalChar();
+                    screen.Buffer[i, 23] = new VideoTerminalChar(this);
                 }
-                caret.LocationY--;
+                caret.Row--;
             }
         }
 
@@ -317,15 +322,15 @@ namespace Terminal
                         case '\a':
                             break;
                         case '\r':
-                            caret.LocationX = 0;
+                            caret.Column = 0;
                             break;
                         case '\n':
-                            caret.LocationY++;
+                            caret.Row++;
                             break;
                         case '\b':
-                            if (caret.LocationX > 0)
+                            if (caret.Column > 0)
                             {
-                                caret.LocationX -= 1;
+                                caret.Column -= 1;
 
                                 AdjustTerminalCaret();
                             }
@@ -370,9 +375,9 @@ namespace Terminal
                         }
                         else if (c == 'K')
                         {
-                            for (int i = caret.LocationX; i < 80; i++)
+                            for (int i = caret.Column; i < 80; i++)
                             {
-                                screen.Buffer[i, caret.LocationY] = new VideoTerminalChar();
+                                screen.Buffer[i, caret.Row] = new VideoTerminalChar(this);
                             }
                         }
                         else if (c == 'C')
@@ -386,13 +391,13 @@ namespace Terminal
                             }
                             for (int i = 0; i < pad; i++)
                             {
-                                caret.LocationX++;
+                                caret.Column++;
                                 AdjustTerminalCaret();
                             }
                         }
                         else if (c == 'A')
                         {
-                            caret.LocationY--;
+                            caret.Row--;
                         }
                         else if (c == 'H')
                         {
@@ -406,8 +411,8 @@ namespace Terminal
                                 xxx_x = Int32.Parse(xx[1]) - 1;
                                 xxx_y = Int32.Parse(xx[0]) - 1;
                             }
-                            caret.LocationX = xxx_x;
-                            caret.LocationY = xxx_y;
+                            caret.Column = xxx_x;
+                            caret.Row = xxx_y;
                         }
                         else if (c == 'J')
                         {
@@ -415,7 +420,7 @@ namespace Terminal
                             {
                                 for (int i = 0; i < 80; i++)
                                 {
-                                    screen.Buffer[i, j] = new VideoTerminalChar();
+                                    screen.Buffer[i, j] = new VideoTerminalChar(this);
                                 }
                             }
                         }
@@ -439,10 +444,7 @@ namespace Terminal
                 
             }
             VideoTerminalChar[,] XXX = (VideoTerminalChar[,])screen.Buffer.Clone();
-            screen.Visible = false;
-            screen.Visible = true;
             screen.Buffer = XXX;
-            this.InvalidateVisual();
             });
         }
 
@@ -482,41 +484,6 @@ namespace Terminal
             string temp = buff;
             buff = "";
             return temp;
-        }
-
-
-
-        class VideoTerminalChar
-        {
-            static CultureInfo cultureinfo = CultureInfo.GetCultureInfo("en-us");
-            static FlowDirection flowdirection = FlowDirection.LeftToRight;
-            static Typeface typeface = new Typeface("Consolas, Simsun");
-            static double fontsize = 12;
-            static Brush fontcolor = Brushes.White;
-
-            FormattedText formattedText;
-            string value;
-            int width; // such as 0, 1, 2
-            public VideoTerminalChar()
-            {
-                value = "";
-                width = 0;
-                UpdateFormattedText();
-            }
-            public VideoTerminalChar(char c)
-            {
-                value = c.ToString();
-                width = 1;
-                UpdateFormattedText();
-            }
-            public void UpdateFormattedText()
-            {
-                formattedText = new FormattedText(value, cultureinfo, flowdirection, typeface, fontsize, fontcolor);
-            }
-            public FormattedText GetFormattedText()
-            {
-                return formattedText;
-            }
         }
     }
 }
